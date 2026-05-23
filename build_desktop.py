@@ -45,8 +45,8 @@ def main():
     print("\n[2/5] Installing Python dependencies...")
     req_path = os.path.join(BACKEND_DIR, "requirements.txt")
     if os.path.exists(req_path):
-        run_command(f'"{PIP_EXE}" install --upgrade pip')
-        run_command(f'"{PIP_EXE}" install -r "{req_path}"')
+        run_command(f'"{PYTHON_EXE}" -m pip install --upgrade pip')
+        run_command(f'"{PYTHON_EXE}" -m pip install -r "{req_path}"')
 
     if sys.platform == "win32":
         print("      Windows: installing PyQt6 + pywebview (no-deps workaround)...")
@@ -75,7 +75,7 @@ def main():
     if os.path.exists(STATIC_DIR):
         shutil.rmtree(STATIC_DIR)
     shutil.copytree(dist_dir, STATIC_DIR)
-    print(f"      Copied {dist_dir} → {STATIC_DIR}")
+    print(f"      Copied {dist_dir} -> {STATIC_DIR}")
 
     # ── Step 5: Run PyInstaller using the spec file ────────────────────
     print("\n[5/5] Bundling with PyInstaller (spec-driven build)...")
