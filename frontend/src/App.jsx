@@ -157,6 +157,7 @@ export default function App() {
   const [historyPrices, setHistoryPrices] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
+  const [prefilledSymbol, setPrefilledSymbol] = useState('');
 
   const uniqueSymbols = useMemo(() => {
     return [...new Set(transactions.map(t => t.symbol))];
@@ -737,9 +738,8 @@ export default function App() {
   };
 
   const handleQuickBuy = (symbol) => {
+    setPrefilledSymbol(symbol);
     setActiveTab('transactions');
-    // Set form fields automatically by triggering an alert or storing symbol
-    // To make it simple, we focus on transactions and let them add it
   };
 
   return (
@@ -877,6 +877,8 @@ export default function App() {
             onAddTransaction={handleAddTransaction} 
             onDeleteTransaction={handleDeleteTransaction}
             onImportTransactions={handleImportTransactions}
+            prefilledSymbol={prefilledSymbol}
+            clearPrefilledSymbol={() => setPrefilledSymbol('')}
           />
         )}
 

@@ -340,10 +340,16 @@ export default function HoldingTable({ holdings, currency, onUpdateTargetWeight 
             </div>
           ) : (
             <div className="flex items-center justify-center space-x-1.5 group/edit">
-              <span className="text-gray-400 font-semibold">{holding.targetWeight}%</span>
+              <span 
+                onClick={() => startEdit(holding.symbol, holding.targetWeight)}
+                className="text-gray-300 font-semibold hover:text-blue-400 cursor-pointer border-b border-dashed border-gray-600 hover:border-blue-400 transition-colors"
+                title="Click to edit target weight"
+              >
+                {holding.targetWeight}%
+              </span>
               <button
                 onClick={() => startEdit(holding.symbol, holding.targetWeight)}
-                className="text-gray-500 hover:text-blue-400 p-0.5 opacity-0 group-hover/edit:opacity-100 transition-opacity"
+                className="text-gray-500 hover:text-blue-400 p-0.5 opacity-50 group-hover/edit:opacity-100 transition-opacity"
               >
                 <Edit2 className="h-3 w-3" />
               </button>

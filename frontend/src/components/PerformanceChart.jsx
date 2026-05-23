@@ -394,7 +394,7 @@ export default function PerformanceChart({
       </div>
 
       {/* Chart Canvas Area */}
-      <div className="h-80 w-full flex items-center justify-center">
+      <div className="h-96 w-full flex items-center justify-center">
         {chartView === 'growth' && (
           historyLoading ? (
             <div className="flex flex-col items-center justify-center space-y-3">

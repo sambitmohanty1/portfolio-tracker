@@ -47,7 +47,14 @@ const normalizeDate = (rawDate) => {
   return clean;
 };
 
-export default function TransactionHistory({ transactions, onAddTransaction, onDeleteTransaction, onImportTransactions }) {
+export default function TransactionHistory({ 
+  transactions, 
+  onAddTransaction, 
+  onDeleteTransaction, 
+  onImportTransactions,
+  prefilledSymbol,
+  clearPrefilledSymbol
+}) {
   const [symbol, setSymbol] = useState('');
   const [type, setType] = useState('BUY');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -57,7 +64,54 @@ export default function TransactionHistory({ transactions, onAddTransaction, onD
   const [currency, setCurrency] = useState('AUD');
   
   const [csvStatus, setCsvStatus] = useState(null); // { type: 'success' | 'error', message: string }
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+  const symbolInputRef = useRef(null);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      if (file.name.endsWith('.csv') || file.type === 'text/csv') {
+        const mockEvent = { target: { files: [file] } };
+        handleCsvUpload(mockEvent);
+      } else {
+        setCsvStatus({
+          type: 'error',
+          message: 'Unsupported file type. Please drop a standard CSV file.'
+        });
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    if (prefilledSymbol) {
+      setSymbol(prefilledSymbol);
+      // Pre-fill default currency based on exchange suffix
+      setCurrency(prefilledSymbol.endsWith('.AX') ? 'AUD' : 'USD');
+      
+      // Clear parent state so it doesn't re-trigger when returning to tab
+      clearPrefilledSymbol();
+
+      // Focus on the input field
+      setTimeout(() => {
+        if (symbolInputRef.current) {
+          symbolInputRef.current.focus();
+        }
+      }, 50);
+    }
+  }, [prefilledSymbol, clearPrefilledSymbol]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -276,6 +330,7 @@ export default function TransactionHistory({ transactions, onAddTransaction, onD
                 <input
                   type="text"
                   required
+                  ref={symbolInputRef}
                   placeholder="e.g. VAS.AX or AAPL"
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
@@ -379,7 +434,14 @@ export default function TransactionHistory({ transactions, onAddTransaction, onD
 
           <div 
             onClick={() => fileInputRef.current.click()}
-            className="border-2 border-dashed border-gray-800 hover:border-violet-500/50 rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 bg-gray-950/20 hover:bg-violet-500/[0.02]"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 ${
+              isDragging
+                ? 'border-violet-500 bg-violet-600/10 shadow-lg shadow-violet-500/10 scale-[1.01]'
+                : 'border-gray-800 hover:border-violet-500/50 bg-gray-950/20 hover:bg-violet-500/[0.02]'
+            }`}
           >
             <input 
               type="file" 
@@ -388,8 +450,12 @@ export default function TransactionHistory({ transactions, onAddTransaction, onD
               accept=".csv" 
               className="hidden" 
             />
-            <FileSpreadsheet className="h-8 w-8 text-gray-500 mx-auto mb-2.5 group-hover:text-violet-400" />
-            <span className="block text-xs font-bold text-gray-300">Choose CSV File</span>
+            <FileSpreadsheet className={`h-8 w-8 mx-auto mb-2.5 transition-colors ${
+              isDragging ? 'text-violet-400 animate-bounce' : 'text-gray-500 group-hover:text-violet-400'
+            }`} />
+            <span className="block text-xs font-bold text-gray-300">
+              {isDragging ? 'Drop CSV here!' : 'Choose or Drag CSV'}
+            </span>
             <span className="block text-[10px] text-gray-500 mt-1 font-semibold">Supports loose column names</span>
           </div>
 
