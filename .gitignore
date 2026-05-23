@@ -18,7 +18,6 @@ yarn-error.log*
 # Build artifacts
 dist/
 build/
-*.spec
 backend/static/
 frontend/dist/
 
