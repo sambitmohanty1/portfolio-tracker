@@ -81,7 +81,7 @@ def main():
     print("\n[5/5] Bundling with PyInstaller (spec-driven build)...")
     spec_path = os.path.join(ROOT_DIR, "NovaPortfolio.spec")
     run_command(
-        f'"{PYINSTALLER_EXE}" --noconfirm --distpath "{os.path.join(ROOT_DIR, "dist")}" "{spec_path}"',
+        f'"{PYINSTALLER_EXE}" --log-level=DEBUG --noconfirm --distpath "{os.path.join(ROOT_DIR, "dist")}" "{spec_path}"',
         cwd=ROOT_DIR,
     )
 
