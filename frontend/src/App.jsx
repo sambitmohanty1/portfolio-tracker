@@ -319,6 +319,51 @@ export default function App() {
     localStorage.setItem('nova_watchlist', JSON.stringify(watchlist));
   }, [watchlist]);
 
+  // Fetch live quotes for watchlist items periodically
+  useEffect(() => {
+    if (watchlist.length === 0) return;
+    
+    let isMounted = true;
+    async function updateWatchlistQuotes() {
+      try {
+        const symbols = watchlist.map(item => item.symbol);
+        const { fetchMarketQuotes } = await import('./utils/api');
+        const quotes = await fetchMarketQuotes(symbols);
+        
+        if (isMounted) {
+          setWatchlist(prev => prev.map(item => {
+            const quote = quotes[item.symbol];
+            if (quote) {
+              const change = quote.currentPrice - quote.prevClose;
+              const changePercent = quote.prevClose > 0 ? (change / quote.prevClose) * 100 : 0;
+              return {
+                ...item,
+                name: quote.name || item.name,
+                price: quote.currentPrice,
+                change,
+                changePercent,
+                currency: quote.currency || item.currency,
+                type: quote.type || item.type
+              };
+            }
+            return item;
+          }));
+        }
+      } catch (e) {
+        console.warn("Failed to update watchlist quotes", e);
+      }
+    }
+    
+    // Update immediately, then every 60s
+    updateWatchlistQuotes();
+    const interval = setInterval(updateWatchlistQuotes, 60000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [watchlist.length]);
+
   // Helper: convert between AUD and USD using live rate
   // audUsdRate = how many USD per 1 AUD (e.g. 0.645)
   const convert = (amount, from, to) => {

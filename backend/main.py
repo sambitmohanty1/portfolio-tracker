@@ -30,8 +30,8 @@ app = FastAPI(
 # CORS restriction - only allow localhost on any port
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -67,6 +67,10 @@ class HMACVerificationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Only protect API endpoints (exclude docs, static files, and root /)
         if not request.url.path.startswith("/api/"):
+            return await call_next(request)
+
+        # Allow preflight OPTIONS requests without signature validation
+        if request.method == "OPTIONS":
             return await call_next(request)
 
         # Retrieve headers

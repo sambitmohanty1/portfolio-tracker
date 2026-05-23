@@ -1,15 +1,52 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, ArrowUpRight, ArrowDownRight, Eye, Sparkles } from 'lucide-react';
+import { fetchMarketQuotes } from '../utils/api';
+
+const COMPANY_ALIASES = {
+  'APPLE': 'AAPL',
+  'WALMART': 'WMT',
+  'WAL-MART': 'WMT',
+  'GOOGLE': 'GOOGL',
+  'ALPHABET': 'GOOGL',
+  'MICROSOFT': 'MSFT',
+  'AMAZON': 'AMZN',
+  'TESLA': 'TSLA',
+  'NETFLIX': 'NFLX',
+  'FACEBOOK': 'META',
+  'META': 'META',
+  'NVIDIA': 'NVDA',
+  'COMMONWEALTH BANK': 'CBA.AX',
+  'CBA': 'CBA.AX',
+  'BHP': 'BHP.AX',
+  'ANZ': 'ANZ.AX',
+  'NAB': 'NAB.AX',
+  'WESTPAC': 'WBC.AX',
+  'CSL': 'CSL.AX',
+  'WOOLWORTHS': 'WOW.AX',
+  'WOW': 'WOW.AX',
+  'COLES': 'COL.AX',
+  'COL': 'COL.AX',
+  'WESFARMERS': 'WES.AX',
+  'WES': 'WES.AX',
+  'VANGUARD INDEX': 'VAS.AX',
+  'VAS': 'VAS.AX',
+  'VGS': 'VGS.AX',
+};
 
 export default function Watchlist({ watchlist, onAddWatchItem, onDeleteWatchItem, onQuickBuy }) {
   const [symbol, setSymbol] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!symbol) return;
     
-    const cleanSymbol = symbol.trim().toUpperCase();
+    setError('');
+    const rawInput = symbol.trim().toUpperCase();
+    
+    // Resolve alias if present
+    let cleanSymbol = COMPANY_ALIASES[rawInput] || rawInput;
     
     // Check if already in watchlist
     if (watchlist.some(item => item.symbol === cleanSymbol)) {
@@ -17,33 +54,35 @@ export default function Watchlist({ watchlist, onAddWatchItem, onDeleteWatchItem
       return;
     }
 
-    // Mock resolve name and price for demonstration
-    let name = 'Global Equities Asset';
-    let type = cleanSymbol.endsWith('.AX') ? 'ASX Stock' : 'US Stock';
-    let price = Math.random() * 200 + 10;
-    let change = (Math.random() - 0.45) * 5;
-    let changePercent = (change / price) * 100;
-    let currency = cleanSymbol.endsWith('.AX') ? 'AUD' : 'USD';
-
-    // Some specific known assets
-    if (cleanSymbol === 'GOOGL') { name = 'Alphabet Inc.'; price = 152.30; }
-    else if (cleanSymbol === 'TSLA') { name = 'Tesla Inc.'; price = 174.60; }
-    else if (cleanSymbol === 'NDQ.AX') { name = 'Betashares Nasdaq 100 ETF'; type = 'ETF'; price = 42.15; }
-    else if (cleanSymbol === 'WES.AX') { name = 'Wesfarmers Limited'; price = 65.80; }
-    else if (cleanSymbol === 'BABA') { name = 'Alibaba Group Holding'; price = 72.40; }
-
-    onAddWatchItem({
-      symbol: cleanSymbol,
-      name,
-      type,
-      price,
-      change,
-      changePercent,
-      currency
-    });
-
-    setSymbol('');
-    setError('');
+    setLoading(true);
+    try {
+      const quotes = await fetchMarketQuotes([cleanSymbol]);
+      const quote = quotes[cleanSymbol];
+      
+      if (quote) {
+        const change = quote.currentPrice - quote.prevClose;
+        const changePercent = quote.prevClose > 0 ? (change / quote.prevClose) * 100 : 0;
+        
+        onAddWatchItem({
+          symbol: cleanSymbol,
+          name: quote.name || cleanSymbol,
+          type: quote.type || (cleanSymbol.endsWith('.AX') ? 'ASX Stock' : 'US Stock'),
+          price: quote.currentPrice,
+          change,
+          changePercent,
+          currency: quote.currency || (cleanSymbol.endsWith('.AX') ? 'AUD' : 'USD')
+        });
+        
+        setSymbol('');
+      } else {
+        setError(`Ticker symbol "${cleanSymbol}" not found. Try adding a suffix for ASX (e.g., CBA.AX).`);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to fetch real-time quote for symbol.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,16 +106,22 @@ export default function Watchlist({ watchlist, onAddWatchItem, onDeleteWatchItem
                 <input
                   type="text"
                   required
-                  placeholder="e.g. TSLA, NDQ.AX"
+                  disabled={loading}
+                  placeholder="e.g. apple, WMT, CBA.AX"
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
-                  className="flex-grow bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-semibold"
+                  className="flex-grow bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-semibold disabled:opacity-50"
                 />
                 <button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-blue-500/10 active:scale-95"
+                  disabled={loading}
+                  className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-blue-500/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[40px]"
                 >
-                  <Plus className="h-5 w-5" />
+                  {loading ? (
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <Plus className="h-5 w-5" />
+                  )}
                 </button>
               </div>
               {error && <span className="block text-[11px] font-semibold text-rose-400 mt-1">{error}</span>}
