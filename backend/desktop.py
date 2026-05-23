@@ -5,6 +5,7 @@ import secrets
 import threading
 import time
 import uvicorn
+import ctypes
 import webview
 from fastapi.staticfiles import StaticFiles
 
@@ -15,6 +16,31 @@ if getattr(sys, "frozen", False):
 else:
     # Local developer project root
     base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+def _get_screen_size() -> tuple:
+    """Returns the primary screen's (width, height) in pixels."""
+    if sys.platform == "win32":
+        user32 = ctypes.windll.user32
+        user32.SetProcessDPIAware()
+        return user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+    elif sys.platform == "darwin":
+        try:
+            from AppKit import NSScreen  # type: ignore
+            frame = NSScreen.mainScreen().frame()
+            return int(frame.size.width), int(frame.size.height)
+        except ImportError:
+            return 1440, 900
+    else:
+        try:
+            import subprocess
+            out = subprocess.check_output(["xrandr"]).decode()
+            for line in out.splitlines():
+                if "* " in line:
+                    w, h = line.split()[0].split("x")
+                    return int(w), int(h)
+        except Exception:
+            pass
+        return 1920, 1080
 
 def find_free_port() -> int:
     """Finds a random free port on loopback."""
@@ -120,23 +146,28 @@ def main():
 
     print(f"Backend ready. Opening app window...")
 
-    # 6. Build URL and create the window
+    # 6. Detect screen resolution for fullscreen sizing
+    screen_width, screen_height = _get_screen_size()
+    print(f"Screen resolution detected: {screen_width}x{screen_height}")
+
+    # 7. Build URL and create the window
     url = f"http://127.0.0.1:{port}/?api_port={port}&api_key={hmac_key}"
 
     window = webview.create_window(
         title="NovaPortfolio",
         url=url,
-        width=1280,
-        height=800,
-        min_size=(1024, 768),
+        width=screen_width,
+        height=screen_height,
+        min_size=(800, 600),
         background_color="#030712",
+        fullscreen=False,   # managed via maximise() below so taskbar stays visible
     )
 
-    # 7. Start the GUI event loop (blocks until window is closed)
+    # 8. Start the GUI event loop (blocks until window is closed)
     # On Windows, force PyQt6 to avoid pythonnet dependency issues on Python 3.14
     gui_engine = "qt" if sys.platform == "win32" else None
     debug_mode = not getattr(sys, "frozen", False)
-    webview.start(gui=gui_engine, debug=debug_mode)
+    webview.start(gui=gui_engine, debug=debug_mode, func=lambda: window.maximize())
 
     print("Application closed. Shutting down secure local server...")
 
