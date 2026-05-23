@@ -3,7 +3,7 @@ name: Build Standalone Desktop App
 on:
   push:
     branches: ["main"]
-    tags:     ["v*.*.*"]          # also trigger on version tags for Release creation
+    tags:     ["v*.*.*"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
@@ -20,6 +20,7 @@ jobs:
             artifact_onefile: dist/NovaPortfolio-onefile.exe
             zip_folder:       NovaPortfolio-Windows-folder.zip
             zip_onefile:      NovaPortfolio-Windows-onefile.zip
+
           - os: macos-latest
             platform: macos
             artifact_folder:  dist/NovaPortfolio
@@ -49,7 +50,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # ── pip cache (speeds up repeated runs significantly) ───────────
+      # ── pip cache ───────────────────────────────────────────────────
       - name: Cache pip packages
         uses: actions/cache@v4
         with:
@@ -59,16 +60,16 @@ jobs:
           key: pip-${{ matrix.os }}-${{ hashFiles('backend/requirements.txt') }}
           restore-keys: pip-${{ matrix.os }}-
 
-      # ── npm: install frontend dependencies ──────────────────────────
+      # ── Install frontend dependencies ───────────────────────────────
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend
 
-      # ── Build everything via build_desktop.py ───────────────────────
+      # ── Build everything ────────────────────────────────────────────
       - name: Build desktop application
         run: python build_desktop.py
 
-      # ── Windows: zip both outputs ────────────────────────────────────
+      # ── Zip outputs (Windows) ───────────────────────────────────────
       - name: Zip outputs (Windows)
         if: matrix.platform == 'windows'
         shell: pwsh
@@ -78,15 +79,14 @@ jobs:
           Compress-Archive -Path "${{ matrix.artifact_onefile }}" `
             -DestinationPath "${{ matrix.zip_onefile }}" -Force
 
-      # ── macOS: zip both outputs ──────────────────────────────────────
+      # ── Zip outputs (macOS) ─────────────────────────────────────────
       - name: Zip outputs (macOS)
         if: matrix.platform == 'macos'
         run: |
-          cd dist
-          zip -r "../${{ matrix.zip_folder }}" NovaPortfolio/
-          zip -r "../${{ matrix.zip_onefile }}" NovaPortfolio-onefile
+          zip -r "${{ matrix.zip_folder }}" "${{ matrix.artifact_folder }}/"
+          zip "${{ matrix.zip_onefile }}" "${{ matrix.artifact_onefile }}"
 
-      # ── Upload to Actions run (always) ──────────────────────────────
+      # ── Upload to Actions run (available on every push) ─────────────
       - name: Upload folder build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -99,26 +99,15 @@ jobs:
           name: ${{ matrix.zip_onefile }}
           path: ${{ matrix.zip_onefile }}
 
-      # ── Upload to GitHub Release (only on version tags) ─────────────
-      - name: Attach to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softproj/upload-release-assets@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: |
-            ${{ matrix.zip_folder }}
-            ${{ matrix.zip_onefile }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ── Create the Release object (runs once, on tag) ──────────────────
-  create-release:
+  # ── Create GitHub Release (only on v*.*.* tags) ─────────────────────
+  release:
     name: Create GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     needs: build
     permissions:
       contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -127,12 +116,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-assets
+          merge-multiple: true
+
+      - name: List assets (debug)
+        run: ls -lh release-assets/
 
       - name: Create Release and upload assets
-        uses: softproj/action-gh-release@v2
-        with:
-          files: release-assets/**/*.zip
-          generate_release_notes: true
-          name: NovaPortfolio ${{ github.ref_name }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            release-assets/*.zip \
+            --title "NovaPortfolio ${{ github.ref_name }}" \
+            --generate-notes
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
