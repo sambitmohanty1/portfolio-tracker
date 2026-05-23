@@ -1,0 +1,36 @@
+# Environments
+venv/
+env/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+dist/
+build/
+*.spec
+backend/static/
+frontend/dist/
+
+# IDEs
+.vscode/
+.idea/
+
+# Local databases and debugging files
+*.db
+*.sqlite3
+debug_tx.json
+
+# OS files
+.DS_Store
+Thumbs.db
