@@ -22,7 +22,7 @@ else:
 
 def run_command(command, cwd=None):
     """Executes a shell command and exits on non-zero return code."""
-    print(f"  ► {command}")
+    print(f"  -> {command}")
     result = subprocess.run(command, shell=True, cwd=cwd or ROOT_DIR)
     if result.returncode != 0:
         print(f"\n[ERROR] Command failed (exit {result.returncode}): {command}")
